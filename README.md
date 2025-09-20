@@ -48,3 +48,70 @@ Thanks to [Theremino](https://www.theremino.com) for the valuable contributions 
 
 ## License
 [AGPL v3.0](https://github.com/fxsound2/fxsound-app/blob/main/LICENSE)
+
+
+
+---
+
+# FxSound Selective Audio Fork
+
+This repository is a fork of the original [fxsound2/fxsound-app](https://github.com/fxsound2/fxsound-app) project, augmented with a prototype C++ code for WASAPI audio session enumeration and a design document outlining a proposed solution for selective audio processing.
+
+**IMPORTANT:** This fork does NOT contain a fully integrated, working solution for selective audio processing. The modifications are conceptual and serve as a starting point for further development. Implementing the full solution requires significant C++ development, deep understanding of Windows audio architecture (WASAPI, APOs), and potentially advanced techniques for browser tab identification.
+
+## Contents:
+
+*   `main.cpp`: A C++ prototype demonstrating how to enumerate WASAPI audio sessions and retrieve associated process IDs (PIDs) and process names. This code is Windows-specific.
+*   `design_document.md`: A detailed design document outlining the proposed architecture for selective audio processing, including challenges and potential solutions.
+*   Original FxSound source code.
+
+## How to use this repository:
+
+### 1. Clone the repository:
+
+```bash
+git clone https://github.com/ggrp-byte/fxsound-selective-audio-fork.git
+cd fxsound-selective-audio-fork
+```
+
+### 2. Compile and run the `main.cpp` prototype (Windows only):
+
+This prototype demonstrates the core concept of identifying audio sessions by process. It needs to be compiled and run on a Windows machine.
+
+**Prerequisites:**
+
+*   Windows operating system (Windows 10 or newer recommended).
+*   Visual Studio with the "Desktop development with C++" workload installed.
+
+**Compilation Steps (using Visual Studio):**
+
+1.  Open Visual Studio.
+2.  Create a new "Empty Project (C++)".
+3.  Add the `main.cpp` file from the cloned repository to your project:
+    *   Right-click on "Source Files" in the Solution Explorer.
+    *   Select "Add" -> "Existing Item..."
+    *   Navigate to the `fxsound-selective-audio-fork` directory and select `main.cpp`.
+4.  Ensure your project configuration is set to "x64" (or "x86" for 32-bit) and "Debug" or "Release".
+5.  Build the project (Build -> Build Solution).
+
+**Running the prototype:**
+
+*   After successful compilation, you will find `main.exe` in your project's output directory (e.g., `x64/Debug` or `x64/Release`).
+*   Run `main.exe` from a Command Prompt or PowerShell. It will list active audio sessions, their PIDs, and process names.
+
+### 3. Explore the FxSound source code and design document:
+
+*   Review `design_document.md` to understand the proposed approach for integrating selective audio processing into FxSound.
+*   Examine the original FxSound source code to identify areas where the proposed changes could be implemented. Refer to the original FxSound `README.md` (also included in this fork) for their build instructions.
+
+## Further Development:
+
+Integrating the selective audio processing functionality into FxSound would involve:
+
+1.  **Modifying FxSound's `Audiopassthru` module:** To intercept and route specific audio sessions based on user selection.
+2.  **Implementing a custom Audio Processing Object (APO):** To apply FxSound's DSP effects only to the selected audio streams.
+3.  **Updating FxSound's GUI (JUCE application):** To allow users to select which applications/sessions to process.
+4.  **Addressing browser tab identification:** This remains a significant challenge, as Windows APIs do not directly expose per-tab audio streams. Advanced techniques or heuristics would be required.
+
+This repository provides the foundational research and a conceptual prototype to guide these complex development efforts.
+
