@@ -1,58 +1,3 @@
-# FxSound
-
-FxSound is a digital audio program built for Windows PC's. The background processing, built on a high-fidelity audio engine, acts as a sort of digital soundcard for your system. This means that your signals will have the clean passthrough when FxSound is active. There are active effects for shaping and boosting your sound's volume, timbre, and equalization included on top of this clean processing, allowing you to customize and enhance your sound.
-
-## General Information
-* Website: https://www.fxsound.com
-* Installer: https://download.fxsound.com/fxsoundlatest
-* Source code: https://github.com/fxsound2/fxsound-app
-* Issue tracker: https://github.com/fxsound2/fxsound-app/issues
-* Forum: https://forum.fxsound.com
-* [Donate to FxSound](https://www.paypal.com/donate/?hosted_button_id=JVNQGYXCQ2GPG)
-  
-## Build Instructions
-### Prerequisites
-* Download and install the [latest version of FxSound](https://download.fxsound.com/fxsoundlatest)
-* Install [Visual Studio 2022](https://visualstudio.microsoft.com/vs)
-* Install [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk)
-* Install [JUCE framework](https://api.juce.com/api/v1/download/juce/latest/windows)
-
-FxSound application requires FxSound Audio Enhancer virtual audio driver. So, to run FxSound application built from source, we need to install FxSound which installs the audio driver.
-
-### Build FxSound from Visual Studio
-* Open [fxsound/Project/FxSound.sln](https://github.com/fxsound2/fxsound-app/blob/main/fxsound/Project/FxSound.sln) in Visual Studio
-* Build the required configuration and platform and run
-
-### Build after exporting the project form Projucer
-FxSound application has three components. 
-1. FxSound GUI application which uses JUCE framework
-2. Audiopassthru module which is used by the application to interact with the audio devices
-3. DfxDsp module which is the DSP for processing audio
-
-Due to the some limitations with Projucer, after exporting the Visual Studio solution from Projucer, few changes have to be made in the solution to build FxSound.
-1. Since the audiopassthru and DfxDsp dependency projects cannot be added to the solution when FxSound.sln is exported, open fxsound/Project/FxSound.sln in Visual Studio and add the existing projects audiopassthru/audiopassthru.vcxproj, dsp/DfxDsp.vcxproj.
-2. From FxSound_App project, add reference to audiopassthru and DfxDsp.
-3. If you run FxSound from Visual Studio, to let the application to use the presets, set the Working Directory to ```$(SolutionDir)..\..\bin\$(PlatformTarget)``` in FxSound_App Project->Properties->Debugging setting.
-
-## How to contribute
-We welcome anyone who wants to contribute to this project. For more details on how to contribute, follow [this contributing guideline](./CONTRIBUTING.md).
-
-## Acknowledgements
-Our special thanks to Advanced Installer for supporting us with Advanced Installer Professional license to build our installer.
-
-[![image](https://github.com/user-attachments/assets/c133fe06-619c-4c17-bce9-f1cf051c5265)](https://www.advancedinstaller.com)
-
-This project uses the [JUCE](https://juce.com) framework, which is licensed under [AGPL v3.0](https://github.com/juce-framework/JUCE/blob/master/LICENSE.md).
-
-Thanks to [Theremino](https://www.theremino.com) for the valuable contributions they do through major feature enhancements in FxSound.
-
-## License
-[AGPL v3.0](https://github.com/fxsound2/fxsound-app/blob/main/LICENSE)
-
-
-
----
-
 # FxSound Selective Audio Fork
 
 This repository is a fork of the original [fxsound2/fxsound-app](https://github.com/fxsound2/fxsound-app) project, augmented with a prototype C++ code for WASAPI audio session enumeration and a design document outlining a proposed solution for selective audio processing.
@@ -63,6 +8,7 @@ This repository is a fork of the original [fxsound2/fxsound-app](https://github.
 
 *   `main.cpp`: A C++ prototype demonstrating how to enumerate WASAPI audio sessions and retrieve associated process IDs (PIDs) and process names. This code is Windows-specific.
 *   `design_document.md`: A detailed design document outlining the proposed architecture for selective audio processing, including challenges and potential solutions.
+*   `modification_plan.md`: A detailed plan for iterative modifications to the FxSound codebase.
 *   Original FxSound source code.
 
 ## How to use this repository:
@@ -74,44 +20,58 @@ git clone https://github.com/ggrp-byte/fxsound-selective-audio-fork.git
 cd fxsound-selective-audio-fork
 ```
 
-### 2. Compile and run the `main.cpp` prototype (Windows only):
+### 2. Prepare your Windows Development Environment (Crucial for JUCE projects):
 
-This prototype demonstrates the core concept of identifying audio sessions by process. It needs to be compiled and run on a Windows machine.
+This project relies heavily on the JUCE framework. The compilation errors you encountered (`C1083: Nie można otworzyć pliku dołącz: 'juce_core/juce_core.h'`) indicate that JUCE is not correctly set up or linked in your Visual Studio project. Please follow these steps carefully:
 
 **Prerequisites:**
 
-*   Windows operating system (Windows 10 or newer recommended).
-*   Visual Studio with the "Desktop development with C++" workload installed.
+*   **Windows operating system** (Windows 10 or newer recommended).
+*   **Visual Studio 2022** with the "Desktop development with C++" workload installed.
+*   **JUCE framework:** Download the latest version from [https://juce.com/get-juce/](https://juce.com/get-juce/).
+
+**Setup Steps:**
+
+1.  **Install JUCE:**
+    *   Download the JUCE framework (e.g., `juce-x.x.x-windows.zip`).
+    *   Extract the contents to a convenient location on your system (e.g., `C:\JUCE`).
+
+2.  **Configure JUCE with Projucer:**
+    *   Navigate to the extracted JUCE folder and find the `Projucer.exe` application (usually in `JUCE\Projucer\Builds\VisualStudio2022\x64\Release` or similar).
+    *   Run `Projucer.exe`.
+    *   In Projucer, go to `File -> Global Paths...`.
+    *   Set the `JUCE Path` to the root directory where you extracted JUCE (e.g., `C:\JUCE`). Click `OK`.
+
+3.  **Open and Re-save the FxSound Project in Projucer:**
+    *   In Projucer, open the FxSound project file: `fxsound-selective-audio-fork/fxsound/FxSound.jucer`.
+    *   Once opened, simply save the project (`File -> Save Project`) or use `File -> Save and Open in IDE...` (select Visual Studio 2022).
+    *   This step is crucial as Projucer regenerates the Visual Studio solution (`.sln`) and project (`.vcxproj`) files, ensuring all JUCE paths and dependencies are correctly configured for your environment.
+
+### 3. Compile and run the FxSound application with simulated modifications (Iteration 1):
+
+This iteration includes simulated code in `fxsound/Source/MainComponent.h` and `fxsound/Source/MainComponent.cpp` to enumerate WASAPI audio sessions and display them in a simple text box within the FxSound GUI.
 
 **Compilation Steps (using Visual Studio):**
 
-1.  Open Visual Studio.
-2.  Create a new "Empty Project (C++)".
-3.  Add the `main.cpp` file from the cloned repository to your project:
-    *   Right-click on "Source Files" in the Solution Explorer.
-    *   Select "Add" -> "Existing Item..."
-    *   Navigate to the `fxsound-selective-audio-fork` directory and select `main.cpp`.
-4.  Ensure your project configuration is set to "x64" (or "x86" for 32-bit) and "Debug" or "Release".
-5.  Build the project (Build -> Build Solution).
+1.  **Open the Solution:** Open `fxsound-selective-audio-fork/fxsound/Project/FxSound.sln` in Visual Studio 2022.
+2.  **Add `psapi.lib` Linker Dependency:**
+    *   In the Solution Explorer, right-click on the `FxSound_App` project and select `Properties`.
+    *   Navigate to `Linker -> Input`.
+    *   In the `Additional Dependencies` field, add `psapi.lib`. Make sure it's separated by a semicolon if there are other libraries.
+    *   Click `Apply` and `OK`.
+3.  **Build the Project:** Select your desired configuration (e.g., `Release` or `Debug`, `x64`) and build the solution (`Build -> Build Solution`).
 
-**Running the prototype:**
+**Running the application:**
 
-*   After successful compilation, you will find `main.exe` in your project's output directory (e.g., `x64/Debug` or `x64/Release`).
-*   Run `main.exe` from a Command Prompt or PowerShell. It will list active audio sessions, their PIDs, and process names.
+*   After a successful build, run the FxSound application from Visual Studio (`Debug -> Start Debugging` or `Start Without Debugging`).
+*   You should see the FxSound GUI. Within the main window, there should be a new, simple text box (likely in the top-left corner) that displays a list of active audio sessions, their Process IDs (PIDs), and process names. This list should update periodically.
 
-### 3. Explore the FxSound source code and design document:
+### 4. Report your findings:
 
-*   Review `design_document.md` to understand the proposed approach for integrating selective audio processing into FxSound.
-*   Examine the original FxSound source code to identify areas where the proposed changes could be implemented. Refer to the original FxSound `README.md` (also included in this fork) for their build instructions.
+*   **Did the project compile successfully after following the JUCE setup steps?**
+*   **Did you encounter any new compilation errors? If so, please provide the exact error messages.**
+*   **When running FxSound, do you see the text box with the enumerated audio sessions?**
+*   **Does the list of sessions appear to be correct and update as you open/close applications that play audio?**
 
-## Further Development:
-
-Integrating the selective audio processing functionality into FxSound would involve:
-
-1.  **Modifying FxSound's `Audiopassthru` module:** To intercept and route specific audio sessions based on user selection.
-2.  **Implementing a custom Audio Processing Object (APO):** To apply FxSound's DSP effects only to the selected audio streams.
-3.  **Updating FxSound's GUI (JUCE application):** To allow users to select which applications/sessions to process.
-4.  **Addressing browser tab identification:** This remains a significant challenge, as Windows APIs do not directly expose per-tab audio streams. Advanced techniques or heuristics would be required.
-
-This repository provides the foundational research and a conceptual prototype to guide these complex development efforts.
+Your detailed feedback is crucial for the next steps in this iterative development process. Based on your report, I will proceed with further modifications as outlined in `modification_plan.md`.
 
