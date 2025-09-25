@@ -286,34 +286,8 @@ FxSettingsDialog::AudioSettingsPane::AudioSettingsPane() :
 
 	setFocusContainer(true);
 
-	endpoint_title_.setColour(Label::ColourIds::textColourId, getLookAndFeel().findColour(TextButton::textColourOnId));
-	endpoint_title_.setJustificationType(Justification::centredLeft);
-
-	preferred_endpoint_.setMouseCursor(MouseCursor::PointingHandCursor);
-	preferred_endpoint_.setWantsKeyboardFocus(true);
-	preferred_endpoint_.setEnabled(true);
-	preferred_endpoint_.onChange = [this]() {
-			auto endpoints = FxModel::getModel().getOutputDevices();
-			auto id = preferred_endpoint_.getSelectedId();
-			if (id > 0 && id <= endpoints.size())
-			{
-				auto pref_device_id = endpoints[id - 1].pwszID;
-				auto pref_device_name = endpoints[id - 1].deviceFriendlyName;
-				FxController::getInstance().setPreferredOutput(pref_device_id.c_str(), pref_device_name.c_str());
-				FxController::getInstance().setOutput(id - 1);
-			}
-			else
-			{
-				if (id == preferred_endpoint_.getNumItems() - 1)
-				{
-					FxController::getInstance().setPreferredOutput("", "Auto");
-				}
-				else
-				{
-					FxController::getInstance().setPreferredOutput("", "None");
-				}
-			}
-		};
+    m_processSelector = std::make_unique<FxProcessSelector>();
+    addAndMakeVisible(m_processSelector.get());
 
 	volume_normalizer_toggle_.setMouseCursor(MouseCursor::PointingHandCursor);
 	volume_normalizer_toggle_.setColour(ToggleButton::ColourIds::tickColourId, getLookAndFeel().findColour(TextButton::textColourOnId));
@@ -344,19 +318,13 @@ FxSettingsDialog::AudioSettingsPane::AudioSettingsPane() :
 	volume_.setEnabled(enabled);
 	addAndMakeVisible(&volume_);
 	
-	addAndMakeVisible(&endpoint_title_);
-	addAndMakeVisible(&preferred_endpoint_);
 	addAndMakeVisible(&volume_normalizer_toggle_);
 
 	setText();
-
-	updateEndpointList();
 }
 
 FxSettingsDialog::AudioSettingsPane::~AudioSettingsPane()
 {
-	preferred_endpoint_.onChange = nullptr;
-
 	FxModel::getModel().removeListener(this);
 }
 
@@ -365,11 +333,9 @@ void FxSettingsDialog::AudioSettingsPane::resized()
 	auto bounds = getLocalBounds().withLeft(X_MARGIN).withTop(Y_MARGIN).withHeight(TITLE_HEIGHT);
 	title_.setBounds(bounds);
 
-	endpoint_title_.setBounds(X_MARGIN, ENDPOINT_Y, ENDPOINT_LABEL_WIDTH, ENDPOINT_LIST_HEIGHT);
-	auto width = getWidth() - ((X_MARGIN + 5) * 2) - ENDPOINT_LABEL_WIDTH;
-	preferred_endpoint_.setBounds(ENDPOINT_LABEL_WIDTH + X_MARGIN + 15, ENDPOINT_Y, width, ENDPOINT_LIST_HEIGHT);
+    m_processSelector->setBounds(X_MARGIN, ENDPOINT_Y, getWidth() - (X_MARGIN * 2), 200);
 
-	int y = preferred_endpoint_.getBottom() + 20;
+	int y = m_processSelector->getBottom() + 20;
 
 	volume_normalizer_toggle_.setBounds(X_MARGIN, y, getWidth() - X_MARGIN, TOGGLE_BUTTON_HEIGHT);
 	y = volume_normalizer_toggle_.getBottom() + 10;
@@ -383,18 +349,12 @@ void FxSettingsDialog::AudioSettingsPane::paint(Graphics& g)
 
 	setText();
 
-	updateEndpointText();
-
 	SettingsPane::paint(g);
 }
 
 void FxSettingsDialog::AudioSettingsPane::setText()
 {
 	auto& theme = dynamic_cast<FxTheme&>(LookAndFeel::getDefaultLookAndFeel());
-
-	endpoint_title_.setText(TRANS("Preferred output:"), NotificationType::dontSendNotification);
-	endpoint_title_.setFont(theme.getNormalFont());
-	preferred_endpoint_.setTextWhenNothingSelected(TRANS("Select preferred output"));
 
 	volume_normalizer_toggle_.setButtonText(TRANS("Normalize Volume"));
 }
@@ -403,58 +363,18 @@ void FxSettingsDialog::AudioSettingsPane::modelChanged(FxModel::Event model_even
 {
 	if (model_event == FxModel::Event::OutputListUpdated)
 	{
-		updateEndpointList();
+		// updateEndpointList(); // Deprecated
 	}
 }
 
 void FxSettingsDialog::AudioSettingsPane::updateEndpointList()
 {
-	auto& controller = FxController::getInstance();
-	auto endpoints = FxModel::getModel().getOutputDevices();
-	auto i = 1;
-	auto pref_device_index = 0;
-
-	preferred_endpoint_.clear(NotificationType::dontSendNotification);
-	for (auto endpoint : endpoints)
-	{
-		preferred_endpoint_.addItem(endpoint.deviceFriendlyName.c_str(), i);
-		if (endpoint.deviceNumChannel == 1)
-		{
-			preferred_endpoint_.setItemEnabled(i, false);
-		}
-		if (endpoint.pwszID == controller.getPreferredOutputId().toWideCharPointer())
-		{
-			pref_device_index = i;
-		}
-		i++;
-	}
-	preferred_endpoint_.addItem(TRANS("Newly connected output device"), i);
-	auto auto_index = i++;
-	preferred_endpoint_.addItem(TRANS("None"), i);
-	auto none_index = i;
-
-	if (controller.getPreferredOutputName().equalsIgnoreCase(L"Auto"))
-	{
-		pref_device_index = auto_index;
-	}
-	else if (controller.getPreferredOutputName().equalsIgnoreCase(L"None"))
-	{
-		pref_device_index = none_index;
-	}
-
-	preferred_endpoint_.setSelectedId(pref_device_index, NotificationType::dontSendNotification);
+    // This logic is deprecated in the new model.
 }
 
 void FxSettingsDialog::AudioSettingsPane::updateEndpointText()
 {
-	auto endpoints = FxModel::getModel().getOutputDevices();
-
-	auto count = preferred_endpoint_.getNumItems();
-	if (count == endpoints.size() + 2)
-	{
-		preferred_endpoint_.changeItemText(count-1, TRANS("Newly connected output device"));
-		preferred_endpoint_.changeItemText(count, TRANS("None"));
-	}	
+    // This logic is deprecated in the new model.
 }
 
 void FxSettingsDialog::AudioSettingsPane::mouseEnter(const MouseEvent& mouse_event)

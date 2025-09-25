@@ -64,8 +64,22 @@
             file="Images/Slider_Thumb_bw.svg"/>
     </GROUP>
     <GROUP id="{D719274A-0BE1-FA67-529B-B012A702512B}" name="Source">
+      <GROUP id="{E5E8C838-04D7-408F-A5AF-5B862432924E}" name="Audio">
+        <FILE id="A4B3C2D1" name="ProcessCaptureManager.cpp" compile="1" resource="0"
+              file="Source/Audio/ProcessCaptureManager.cpp"/>
+        <FILE id="B5D4E3F2" name="ProcessCaptureManager.h" compile="0" resource="0"
+              file="Source/Audio/ProcessCaptureManager.h"/>
+        <FILE id="C6A5B4A3" name="WasapiLoopback.cpp" compile="1" resource="0"
+              file="Source/Audio/WasapiLoopback.cpp"/>
+        <FILE id="D7B6C5B4" name="WasapiLoopback.h" compile="0" resource="0"
+              file="Source/Audio/WasapiLoopback.h"/>
+      </GROUP>
       <GROUP id="{7D838BF2-5642-7BE7-DF78-745226F70630}" name="GUI">
-        <GROUP id="{59F271E4-F186-3EBD-DA7B-97C454130F71}" name="Components">
+        <GROUP id="{59F271E4-F186-3EBD-DA7B-97C4T4130F71}" name="Components">
+          <FILE id="E8F9G0H1" name="FxProcessSelector.cpp" compile="1" resource="0"
+                file="Source/GUI/FxProcessSelector.cpp"/>
+          <FILE id="I2J3K4L5" name="FxProcessSelector.h" compile="0" resource="0"
+                file="Source/GUI/FxProcessSelector.h"/>
           <FILE id="qb7R1e" name="FxPresetNameEditor.cpp" compile="1" resource="0"
                 file="Source/GUI/FxPresetNameEditor.cpp"/>
           <FILE id="kYhKSD" name="FxPresetNameEditor.h" compile="0" resource="0"
@@ -196,7 +210,7 @@
   </MAINGROUP>
   <EXPORTFORMATS>
     <VS2022 targetFolder="Project" extraDefs="JUCE_MODAL_LOOPS_PERMITTED"
-            extraCompilerFlags="/bigobj /Qpar" externalLibraries="crypt32.lib;Wtsapi32.lib"
+            extraCompilerFlags="/bigobj /Qpar" externalLibraries="crypt32.lib;Wtsapi32.lib;ole32.lib;Avrt.lib"
             bigIcon="EFMcqw" windowsTargetPlatformVersion="Latest">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" headerPath="$(SolutionDir)..\..\audiopassthru\include;$(SolutionDir)..\..\dsp\include;$(SolutionDir)..\Source\GUI"

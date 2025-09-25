@@ -1,6 +1,6 @@
 /*
 FxSound
-Copyright (C) 2025  FxSound LLC
+Copyright (C) 2024  FxSound LLC
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -28,11 +28,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class WasapiLoopbackCapture;
 
 // Callback function type for when audio data is captured
-using AudioCaptureCallback = std::function<void(WasapiLoopbackCapture*, const BYTE*, UINT32)>;
+using AudioCaptureCallback = std::function<void(WasapiLoopbackCapture*, const BYTE*, UINT32, WAVEFORMATEX*)>;
 
 class WasapiLoopbackCapture
 {
 public:
+    WAVEFORMATEX* GetWaveFormat() const { return m_waveFormat; }
     WasapiLoopbackCapture(DWORD processId);
     ~WasapiLoopbackCapture();
 

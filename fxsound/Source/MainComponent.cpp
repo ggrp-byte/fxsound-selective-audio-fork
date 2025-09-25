@@ -8,118 +8,6 @@
 
 #include "MainComponent.h"
 
-// --- START OF SIMULATED MODIFICATIONS ---
-#include <algorithm>
-#include <atlbase.h> // For CComPtr
-
-// Helper function to convert wide string to JUCE String
-juce::String WideToJuceString(const WCHAR* wideStr)
-{
-    if (!wideStr) return juce::String();
-    return juce::String(CharPointer_UTF16(wideStr));
-}
-
-// Helper function to get process name from PID (Windows API)
-juce::String MainComponent::getProcessName(DWORD pid)
-{
-    // This function needs to be implemented using Windows API (e.g., OpenProcess, GetModuleFileNameExA)
-    // For simulation purposes, we'll return a placeholder.
-    // In a real Windows environment, this would involve proper error handling and resource management.
-    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (hProcess)
-    {
-        WCHAR buffer[MAX_PATH];
-        if (GetModuleFileNameExW(hProcess, 0, buffer, MAX_PATH))
-        {
-            juce::String fullPath = WideToJuceString(buffer);
-            size_t lastSlash = fullPath.findLastOccurrenceOf("\\");
-            if (lastSlash != juce::String::notFound)
-            {
-                CloseHandle(hProcess);
-                return fullPath.substring(lastSlash + 1);
-            }
-        }
-        CloseHandle(hProcess);
-    }
-    return "Unknown Process (PID: " + juce::String(pid) + ")";
-}
-
-// Method to enumerate active audio sessions
-void MainComponent::enumerateAudioSessions()
-{
-    juce::String sessionInfoText;
-    HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-    if (FAILED(hr))
-    {
-        sessionInfoText += "CoInitializeEx failed: " + juce::String::toHexString(hr) + "\n";
-        sessionDisplayBox.setText(sessionInfoText);
-        return;
-    }
-
-    CComPtr<IMMDeviceEnumerator> pEnumerator;
-    CComPtr<IMMDevice> pDevice;
-    CComPtr<IAudioSessionManager2> pSessionManager;
-    CComPtr<IAudioSessionEnumerator> pSessionEnumerator;
-
-    try
-    {
-        hr = pEnumerator.CoCreateInstance(__uuidof(MMDeviceEnumerator));
-        if (FAILED(hr)) throw "CoCreateInstance for IMMDeviceEnumerator failed";
-
-        hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice);
-        if (FAILED(hr)) throw "GetDefaultAudioEndpoint failed";
-
-        hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, NULL, (void**)&pSessionManager);
-        if (FAILED(hr)) throw "Activate for IAudioSessionManager2 failed";
-
-        hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
-        if (FAILED(hr)) throw "GetSessionEnumerator failed";
-
-        int sessionCount;
-        hr = pSessionEnumerator->GetCount(&sessionCount);
-        if (FAILED(hr)) throw "GetCount failed";
-
-        sessionInfoText += "Active Audio Sessions: " + juce::String(sessionCount) + "\n";
-
-        for (int i = 0; i < sessionCount; ++i)
-        {
-            CComPtr<IAudioSessionControl> pSessionControl;
-            CComPtr<IAudioSessionControl2> pSessionControl2;
-            hr = pSessionEnumerator->GetSession(i, &pSessionControl);
-            if (FAILED(hr)) continue;
-
-            hr = pSessionControl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pSessionControl2);
-            if (SUCCEEDED(hr))
-            {
-                DWORD pid = 0;
-                hr = pSessionControl2->GetProcessId(&pid);
-                if (SUCCEEDED(hr))
-                {
-                    juce::String processName = getProcessName(pid);
-                    sessionInfoText += "  Session " + juce::String(i) + ": PID = " + juce::String(pid) + ", Process Name = " + processName + "\n";
-                }
-                else
-                {
-                    sessionInfoText += "  Session " + juce::String(i) + ": Could not get PID (Error: " + juce::String::toHexString(hr) + ")\n";
-                }
-            }
-            else
-            {
-                sessionInfoText += "  Session " + juce::String(i) + ": Could not query IAudioSessionControl2 (Error: " + juce::String::toHexString(hr) + ")\n";
-            }
-        }
-    }
-    catch (const char* msg)
-    {
-        sessionInfoText += "Error: " + juce::String(msg) + ", HRESULT: " + juce::String::toHexString(hr) + "\n";
-    }
-
-    CoUninitialize();
-    sessionDisplayBox.setText(sessionInfoText);
-}
-
-// --- END OF SIMULATED MODIFICATIONS ---
-
 //==============================================================================
 MainComponent::MainComponent(const String& name) : Component(name)
 {
@@ -149,28 +37,11 @@ MainComponent::MainComponent(const String& name) : Component(name)
 		font_size_ = settings_.getDouble("FontSize");
 		font_color_ = settings_.getInt("FontColor");
 	}
-
-    // --- START OF SIMULATED MODIFICATIONS ---
-    addAndMakeVisible(sessionDisplayBox);
-    sessionDisplayBox.setMultiLine(true);
-    sessionDisplayBox.setReturnKeyStartsNewLine(true);
-    sessionDisplayBox.setReadOnly(true);
-    sessionDisplayBox.setScrollbarsShown(true);
-    sessionDisplayBox.setCaretVisible(false);
-    sessionDisplayBox.setColour(juce::TextEditor::backgroundColourId, juce::Colours::lightgrey);
-    sessionDisplayBox.setColour(juce::TextEditor::textColourId, juce::Colours::black);
-
-    audioSessionTimer.setTimerCallback([this] { enumerateAudioSessions(); });
-    audioSessionTimer.startTimer(1000); // Update every 1 second
-    // --- END OF SIMULATED MODIFICATIONS ---
 }
 
 MainComponent::~MainComponent()
 {
 	setLookAndFeel(nullptr);
-    // --- START OF SIMULATED MODIFICATIONS ---
-    audioSessionTimer.stopTimer();
-    // --- END OF SIMULATED MODIFICATIONS ---
 }
 
 //==============================================================================
@@ -215,10 +86,6 @@ void MainComponent::resized()
 			}
 		}
 	}
-    // --- START OF SIMULATED MODIFICATIONS ---
-    // Position the session display box
-    sessionDisplayBox.setBounds(10, 10, getWidth() - 20, getHeight() / 3); // Example positioning
-    // --- END OF SIMULATED MODIFICATIONS ---
 }
 
 void MainComponent::mouseDown(const MouseEvent& e)
@@ -350,5 +217,3 @@ void MainComponent::showAnnouncement()
 		announcement_->goToURL(url);
 	}
 }
-
-

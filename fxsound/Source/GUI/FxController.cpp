@@ -19,6 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxController.h"
 #include "FxMainWindow.h"
 #include "FxSystemTrayView.h"
+#include <atlbase.h>
+#include <audiopolicy.h>
+#include <Psapi.h>
 #include "FxMessage.h"
 #include "FxEffects.h"
 #include "FxPresetSaveDialog.h"
@@ -259,51 +262,30 @@ void FxController::config(const String& commandline)
     setLanguage(language);
 }
 
-void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray_view, AudioPassthru* audio_passthru)
+void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray_view, ProcessCaptureManager* capture_manager)
 {
 	if (!isTimerRunning())
 	{
 		main_window_ = main_window;
-		audio_passthru_ = audio_passthru;
+		capture_manager_ = capture_manager;
 		system_tray_view_ = system_tray_view;
 
-        output_device_id_ = settings_.getString("output_device_id");
-        output_device_name_ = settings_.getString("output_device_name");
-       
-        if (audio_passthru_->init() != 0)
-        {
-            String message(TRANS("Error in system audio configuration. Unable to run FxSound"));
-            AlertWindow::showMessageBox(AlertWindow::AlertIconType::WarningIcon, JUCEApplication::getInstance()->getApplicationName(), message, TRANS("OK"));
+        // Connect the DSP module to the new capture manager
+        capture_manager_->SetDspModule(&dfx_dsp_);
 
-            JUCEApplication::getInstance()->systemRequestedQuit();
-            return;
-        }
-
-		audio_passthru_->setDspProcessingModule(&dfx_dsp_);
-		initOutputs(audio_passthru_->getSoundDevices());
-		if (dfx_enabled_)
-		{
-			startTimer(100);
-		}
-		else
-		{
-			main_window_->removeFromDesktop();
-			FxDeviceErrorMessage error_message;
-			error_message.runModalLoop();
-			JUCEApplication::getInstance()->systemRequestedQuit();
-			return;
-		}
+        // The new model doesn't rely on the old device list or init process.
+        // We will add a new way to get process lists later.
+        // For now, we just start the UI timer.
+		startTimer(100);
 	
-		audio_passthru_->registerCallback(this);
-
 		auto path = File(File::addTrailingSeparator(File::getSpecialLocation(File::SpecialLocationType::userApplicationDataDirectory).getFullPathName()) + L"FxSound\\Presets");
 		if (!path.exists())
 		{
 			path.createDirectory();
 		}
 
-		FxModel::getModel().setPowerState(dfx_enabled_ && settings_.getBool("power"));
-		dfx_dsp_.powerOn(FxModel::getModel().getPowerState() && !FxModel::getModel().isMonoOutputSelected());
+		FxModel::getModel().setPowerState(settings_.getBool("power"));
+		dfx_dsp_.powerOn(FxModel::getModel().getPowerState());
 		if (volume_normalization_enabled_)
 		{
 			dfx_dsp_.setVolumeNormalization(volume_normalization_rms_);
@@ -603,112 +585,20 @@ bool FxController::setPreset(int selected_preset)
 
 void FxController::setOutput(int output, bool notify)
 {
-	if (!isTimerRunning())
-	{
-		return;
-	}
-
-	std::vector<SoundDevice> sound_devices = audio_passthru_->getSoundDevices();
-
-	int i = 0;
-    bool output_found = false;
-	SoundDevice selected_sound_device = {};
-	if (output < sound_devices.size())
-	{
-		selected_sound_device = sound_devices[output];
-	}
-
-	// Do not allow mono device to be set as output device
-	auto mono_device = selected_sound_device.deviceNumChannel < 2;
-	if (mono_device)
-	{
-		return;
-	}
-
-	for (auto sound_device : sound_devices)
-	{
-		if (sound_device.isRealDevice)
-		{
-			if (i == output)
-			{
-                output_found = true;
-
-                if (output_device_id_ != sound_device.pwszID.c_str())
-                {
-                    output_device_id_ = sound_device.pwszID.c_str();
-                    output_device_name_ = sound_device.deviceFriendlyName.c_str();
-
-					setSelectedOutput(output_device_id_, output_device_name_);
-                }
-
-                if (!sound_device.isTargetedRealPlaybackDevice)
-                {
-                    audio_passthru_->setAsPlaybackDevice(sound_device);
-					selected_sound_device = sound_device;
-
-                    output_changed_ = true;
-                }
-
-				break;
-			}
-			i++;
-		}
-	}
-
-    if (!output_found)
-    {
-        audio_passthru_->mute(true);
-        dfx_dsp_.powerOn(false);
-
-        FxModel::getModel().pushMessage(TRANS("Output Disconnected"));
-    }
-    else
-    {
-        if (FxModel::getModel().getPowerState())
-        {
-			dfx_dsp_.powerOn(true);
-			audio_passthru_->mute(false);
-        }
-
-		FxModel::getModel().pushMessage(TRANS("Output: ") + output_device_name_);
-    }
-
-	FxModel::getModel().setSelectedOutput(output, selected_sound_device, notify);
+    // This logic is deprecated in the new model.
+    // The output is always the system's default device.
+    // The UI for this will be removed/repurposed in Phase 3.
 }
 
 void FxController::selectOutput()
 {
-    int index = -1;
-
-    if (output_device_id_.isNotEmpty() &&
-        (index = output_ids_.indexOf(output_device_id_)) >= 0)
-    {
-        FxModel::getModel().setSelectedOutput(index, output_devices_[index]);
-    }
-    else
-    {
-        if (!output_ids_.isEmpty())
-        {
-            output_device_id_ = output_ids_[0];
-            output_device_name_ = FxModel::getModel().getOutputNames()[0];
-
-			setSelectedOutput(output_device_id_, output_device_name_);
-
-            FxModel::getModel().setSelectedOutput(0, output_devices_[0]);
-        }
-        else
-        {
-            output_device_id_ = "";
-            output_device_name_ = "";
-
-			setSelectedOutput(output_device_id_, output_device_name_);
-        }
-    }
+    // This logic is deprecated in the new model.
 }
 
 bool FxController::isPlaybackDeviceAvailable()
 {
-    return playback_device_available_;
+    // This logic is deprecated in the new model. Always assume available.
+    return true;
 }
 
 void FxController::savePreset(const String& preset_name)
@@ -928,201 +818,17 @@ bool FxController::importPresets(const Array<File>& preset_files, StringArray& i
 
 void FxController::initOutputs(std::vector<SoundDevice>& sound_devices)
 {
-    StringArray output_names;
-    int i = 0;
-    
-    dfx_enabled_ = false;
-    output_ids_.clear();
-	output_devices_.clear();
-	
-	auto [pref_device_id, pref_device_name] = getPreferredOutput();
-
-    for (auto sound_device : sound_devices)
-    {
-        if (sound_device.isRealDevice)
-        {
-            output_names.add(sound_device.deviceFriendlyName.c_str());
-            output_ids_.add(sound_device.pwszID.c_str());
-			output_devices_.push_back(sound_device);
-
-            if (output_device_id_.isEmpty() &&
-                output_device_name_ == sound_device.deviceFriendlyName.c_str())
-            {
-                output_device_id_ = sound_device.pwszID.c_str();
-            }
-
-			if (pref_device_id.isEmpty() &&
-				pref_device_name == sound_device.deviceFriendlyName.c_str())
-			{
-				settings_.setString("preferred_device_id", sound_device.pwszID.c_str());
-			}
-
-            i++;
-        }
-        else if (sound_device.deviceFriendlyName.find(L"FxSound Audio Enhancer") != std::wstring::npos)
-        {
-            dfx_enabled_ = true;
-        }
-    }
-
-	addPreferredOutput(output_devices_);
-	
-    FxModel::getModel().initOutputs(output_devices_);
-    selectOutput();
+    // This logic is deprecated in the new model.
 }
 
 void FxController::addPreferredOutput(std::vector<SoundDevice>& sound_devices)
 {
-	auto [pref_device_id, pref_device_name] = getPreferredOutput();
-
-	if (pref_device_id.isNotEmpty() && pref_device_name.isNotEmpty())
-	{
-		bool found = false;
-		for (auto sound_device : sound_devices)
-		{
-			if (sound_device.pwszID == pref_device_id.toWideCharPointer() ||
-				sound_device.deviceFriendlyName == pref_device_name.toWideCharPointer())
-			{
-				found = true;
-			}
-		}
-
-		if (!found)
-		{
-			SoundDevice device = {};
-			device.pwszID = pref_device_id.toWideCharPointer();
-			device.deviceFriendlyName = pref_device_name.toWideCharPointer();
-
-			sound_devices.push_back(device);
-		}
-	}
+	// This logic is deprecated in the new model.
 }
 
 void FxController::updateOutputs(std::vector<SoundDevice>& sound_devices)
 {
-    StringArray output_names;
-    StringArray new_device_ids;
-    int current_index = -1;
-
-    // If the playback devices are enumerated due to a change in the list,
-    // find the newly connected device ids
-    if (!output_ids_.isEmpty())
-    {
-        current_index = output_ids_.indexOf(output_device_id_);
-        for (auto sound_device : sound_devices)
-        {
-            if (sound_device.isRealDevice && sound_device.deviceNumChannel >= 2)
-            {
-                if (output_ids_.indexOf(String(sound_device.pwszID.c_str())) < 0)
-                {
-                    new_device_ids.add(sound_device.pwszID.c_str());
-                }
-            }
-        }
-
-        // clear the cached device id list for updating with the new list
-        output_ids_.clear();
-		output_devices_.clear();
-    }    
-
-    auto i = 0;
-    auto output_selected = -1;
-	auto [pref_output_id, pref_output_name] = getPreferredOutput();
-	dfx_enabled_ = false;
-	for (auto sound_device : sound_devices)
-	{
-		if (sound_device.isRealDevice && sound_device.deviceNumChannel >= 2)
-		{
-            // This is for updating the device names in the UI
-            output_names.add(sound_device.deviceFriendlyName.c_str());
-            // This is for caching the device id list
-			output_ids_.add(sound_device.pwszID.c_str());
-			output_devices_.push_back(sound_device);
-
-			if (pref_output_name.compareIgnoreCase("Auto") == 0)
-			{
-				if (new_device_ids.contains(String(sound_device.pwszID.c_str())))
-				{
-					output_device_id_ = sound_device.pwszID.c_str();
-					output_device_name_ = sound_device.deviceFriendlyName.c_str();
-				}
-			}
-
-			// Preferred device is found, and it becomes the output device
-			if (pref_output_id.isNotEmpty() &&
-				pref_output_id == sound_device.pwszID.c_str())
-			{
-				output_device_id_ = sound_device.pwszID.c_str();
-				output_device_name_ = sound_device.deviceFriendlyName.c_str();
-			}
-
-            if (output_device_id_.isEmpty() &&
-                output_device_name_ == sound_device.deviceFriendlyName.c_str())
-            {
-                output_device_id_ = sound_device.pwszID.c_str();
-            }
-
-            // Playback device is already selected, either manually or from settings loaded on application launch
-            if (output_device_id_.isNotEmpty() && output_device_name_.isNotEmpty())
-            {
-                if (sound_device.pwszID == output_device_id_.toWideCharPointer())
-                {
-                    output_selected = i;
-                }
-            }
-
-			i++;
-		}
-		else if (sound_device.deviceFriendlyName.find(L"FxSound Audio Enhancer") != std::wstring::npos)
-		{
-			dfx_enabled_ = true;
-		}
-	}
-
-	addPreferredOutput(output_devices_);
-
-    // Update the playack device names in the UI
-    FxModel::getModel().initOutputs(output_devices_);
-
-    auto current_output_id = output_device_id_;    
-    if (output_names.size())
-    {
-        // Playback devices are not connected during launch and connected now
-        // or a selected playback device is disconnected
-        if (output_selected < 0)
-        {
-			// If previously selected output has been disconnected then, select a newly connected device
-			if (!new_device_ids.isEmpty())
-			{
-				output_device_id_ = new_device_ids[0];
-			}
-			else 
-			{
-				// If there is no new device select the first available device
-				if (!output_ids_.isEmpty())
-				{
-					output_device_id_ = output_ids_[0];
-				}
-				else
-				{
-					// In the rare case that there is no output device available, turn off processing
-					audio_passthru_->mute(true);
-					dfx_dsp_.powerOn(false);
-
-					FxModel::getModel().pushMessage(TRANS("Output Disconnected"));
-				}
-			}
-        }
-
-        auto index = output_ids_.indexOf(output_device_id_);
-        output_device_name_ = output_names[index];
-
-		setSelectedOutput(output_device_id_, output_device_name_);
-
-        FxModel::getModel().setSelectedOutput(index, output_devices_[index]);
-
-		setOutput(index);       
-    }
+    // This logic is deprecated in the new model.
 }
 
 void FxController::setSelectedOutput(String id, String name)
@@ -1369,80 +1075,10 @@ LRESULT CALLBACK FxController::eventCallback(HWND hwnd, const UINT message, cons
 
 void FxController::timerCallback()
 {
-	if (output_changed_)
-	{
-		output_changed_ = false;
-		Thread::sleep(200);
-		return;
-	}
-
-    audio_passthru_->processTimer();
-	auto total_audio_process_time = dfx_dsp_.getTotalAudioProcessedTime();
-	if (audio_process_time_ != total_audio_process_time)
-	{
-		audio_process_time_ = total_audio_process_time;
-		audio_process_on_counter_++;
-		audio_process_off_counter_ = 0;
-	}
-	else
-	{
-		audio_process_off_counter_++;
-		audio_process_on_counter_ = 0;
-	}
-
-	auto power = FxModel::getModel().getPowerState() && !FxModel::getModel().isMonoOutputSelected();
-	if (audio_process_on_counter_ == 5 && !audio_process_on_)
-	{
-		audio_process_on_ = true;
-		system_tray_view_->setStatus(power, true);
-		main_window_->setIcon(power, true);
-		main_window_->startLogoAnimation();
-        if (view_ == ViewType::Pro)
-        {
-            main_window_->showProView();
-			main_window_->startVisualizer();
-        }
-	}
-	if (audio_process_off_counter_ == 5 && audio_process_on_)
-	{
-		audio_process_on_ = false;
-		system_tray_view_->setStatus(power, false);
-		main_window_->setIcon(power, false);
-		main_window_->stopLogoAnimation();
-        if (view_ == ViewType::Pro)
-        {
-            main_window_->showProView();
-			main_window_->pauseVisualizer();
-        }
-	}
-}
-
-void FxController::onSoundDeviceChange(std::vector<SoundDevice> sound_devices)
-{
-	ScopedLock auto_lock(lock_);
-
-    auto available = audio_passthru_->isPlaybackDeviceAvailable();
-    if (available != playback_device_available_)
-    {
-        playback_device_available_ = available;
-        FxModel::getModel().notifyOutputError();
-    }
-
-	if (sound_devices.size() != device_count_)
-	{
-		updateOutputs(sound_devices);
-		device_count_ = (uint32_t) sound_devices.size();
-
-		if (!dfx_enabled_)
-		{
-			stopTimer();
-			main_window_->removeFromDesktop();
-			FxDeviceErrorMessage error_message;
-			error_message.runModalLoop();
-			JUCEApplication::getInstance()->systemRequestedQuit();
-			return;
-		}
-	}
+	// This timer is now only for UI updates.
+    // The audio processing is self-driven in ProcessCaptureManager.
+    // We can add logic here later to update the visualizer based on
+    // data from the capture manager.
 }
 
 void FxController::enableHotkeys(bool enable)
@@ -2000,4 +1636,105 @@ String FxController::FormatString(const String& format, const String& arg)
     swprintf_s(buffer, format.toWideCharPointer(), arg.toWideCharPointer());
 
     return String(buffer);
+}
+
+juce::Array<FxModel::ProcessInfo> FxController::getAudioProcesses()
+{
+    juce::Array<FxModel::ProcessInfo> processes;
+
+    HRESULT hr = S_OK;
+    CComPtr<IMMDeviceEnumerator> pEnumerator;
+    CComPtr<IMMDeviceCollection> pDeviceCollection;
+
+    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator);
+    if (FAILED(hr)) return processes;
+
+    hr = pEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &pDeviceCollection);
+    if (FAILED(hr)) return processes;
+
+    UINT deviceCount;
+    hr = pDeviceCollection->GetCount(&deviceCount);
+    if (FAILED(hr)) return processes;
+
+    for (UINT i = 0; i < deviceCount; i++)
+    {
+        CComPtr<IMMDevice> pDevice;
+        hr = pDeviceCollection->Item(i, &pDevice);
+        if (FAILED(hr)) continue;
+
+        CComPtr<IAudioSessionManager2> pSessionManager;
+        hr = pDevice->Activate(__uuidof(IAudioSessionManager2), CLSCTX_ALL, NULL, (void**)&pSessionManager);
+        if (FAILED(hr)) continue;
+
+        CComPtr<IAudioSessionEnumerator> pSessionEnumerator;
+        hr = pSessionManager->GetSessionEnumerator(&pSessionEnumerator);
+        if (FAILED(hr)) continue;
+
+        int sessionCount;
+        hr = pSessionEnumerator->GetCount(&sessionCount);
+        if (FAILED(hr)) continue;
+
+        for (int j = 0; j < sessionCount; j++)
+        {
+            CComPtr<IAudioSessionControl> pSessionControl;
+            CComPtr<IAudioSessionControl2> pSessionControl2;
+            hr = pSessionEnumerator->GetSession(j, &pSessionControl);
+            if (FAILED(hr)) continue;
+
+            hr = pSessionControl->QueryInterface(__uuidof(IAudioSessionControl2), (void**)&pSessionControl2);
+            if (FAILED(hr)) continue;
+
+            if (pSessionControl2->IsSystemSoundsSession() == S_OK) continue;
+
+            DWORD sessionProcessId = 0;
+            hr = pSessionControl2->GetProcessId(&sessionProcessId);
+            if (FAILED(hr) || sessionProcessId == 0) continue;
+
+            LPWSTR displayName = NULL;
+            pSessionControl->GetDisplayName(&displayName);
+
+            FxModel::ProcessInfo info;
+            info.pid = sessionProcessId;
+            info.name = juce::String(displayName ? displayName : L"");
+            if (displayName) CoTaskMemFree(displayName);
+
+            if (info.name.isEmpty())
+            {
+				HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, sessionProcessId);
+				if (hProcess) {
+					WCHAR processName[MAX_PATH] = L"";
+					if (GetModuleBaseName(hProcess, NULL, processName, MAX_PATH)) {
+						info.name = processName;
+					}
+					CloseHandle(hProcess);
+				}
+            }
+            if (info.name.isEmpty()) info.name = "Unknown Process";
+
+            bool found = false;
+            for(const auto& p : processes) { if(p.pid == info.pid) { found = true; break; } }
+            if(!found)
+            {
+                info.selected = capture_manager_ ? capture_manager_->IsProcessCapturing(info.pid) : false;
+                processes.add(info);
+            }
+        }
+    }
+
+    return processes;
+}
+
+void FxController::setProcessCaptureState(DWORD pid, bool shouldCapture)
+{
+    if (capture_manager_)
+    {
+        if (shouldCapture)
+        {
+            capture_manager_->StartCaptureForProcess(pid);
+        }
+        else
+        {
+            capture_manager_->StopCaptureForProcess(pid);
+        }
+    }
 }

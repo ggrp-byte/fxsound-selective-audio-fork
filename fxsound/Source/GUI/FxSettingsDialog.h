@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxTheme.h"
 #include "FxHotkeyLabel.h"
 #include "FxLanguage.h"
+#include "FxProcessSelector.h"
 
 //==============================================================================
 /*
@@ -130,8 +131,7 @@ private:
 		void mouseEnter(const MouseEvent& mouse_event) override;
 		void mouseExit(const MouseEvent& mouse_event) override;
 
-		ComboBox preferred_endpoint_;
-		Label endpoint_title_;
+        std::unique_ptr<FxProcessSelector> m_processSelector;
 		ToggleButton volume_normalizer_toggle_;
 		FxVolumeSlider volume_;
 	};

@@ -48,6 +48,13 @@ public:
 		PresetType type;
 	};
 
+	struct ProcessInfo final
+	{
+		String name;
+		uint32_t pid;
+		bool selected;
+	};
+
 	class Listener
 	{
 	public:

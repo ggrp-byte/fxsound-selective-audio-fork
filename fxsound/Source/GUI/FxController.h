@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxModel.h"
 #include "FxEffects.h"
 #include "../Source/Utils/Settings/Settings.h"
-#include "AudioPassthru.h"
+#include "../Audio/ProcessCaptureManager.h"
 #include "DfxDsp.h"
 #include <wtsapi32.h>
 
@@ -32,7 +32,7 @@ class FxSystemTrayView;
 
 enum ViewType { Lite = 1, Pro = 2 };
 
-class FxController : public Timer, private AudioPassthruCallback
+class FxController : public Timer
 {
 public:
     static constexpr int NUM_SPECTRUM_BANDS = 10;
@@ -53,8 +53,11 @@ public:
 	void operator=(FxController&) = delete;
 
     void config(const String& commandline);
-	void init(FxMainWindow* main_window, FxSystemTrayView* system_tray_view, AudioPassthru* audio_passthru);
+	void init(FxMainWindow* main_window, FxSystemTrayView* system_tray_view, ProcessCaptureManager* capture_manager);
 	void initPresets();
+
+    juce::Array<FxModel::ProcessInfo> getAudioProcesses();
+    void setProcessCaptureState(DWORD pid, bool shouldCapture);
 
 	void showView();
 	void switchView();
@@ -177,8 +180,6 @@ private:
 	static LRESULT CALLBACK eventCallback(HWND hwnd, const UINT message, const WPARAM w_param, const LPARAM l_param);
 	void timerCallback() override;
 
-	void onSoundDeviceChange(std::vector<SoundDevice> sound_devices) override;
-	
     void initOutputs(std::vector<SoundDevice>& sound_devices);
 	void addPreferredOutput(std::vector<SoundDevice>& sound_devices);
     void selectOutput();
@@ -195,7 +196,7 @@ private:
 
 	FxMainWindow* main_window_;
 	FxSystemTrayView* system_tray_view_;
-	AudioPassthru* audio_passthru_;
+	ProcessCaptureManager* capture_manager_;
 	DfxDsp dfx_dsp_;
 	FxSound::Settings settings_;
 	uint32_t device_count_;

@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "GUI/FxController.h"
 #include "GUI/FxTheme.h"
 #include "GUI/FxMainWindow.h"
-#include "AudioPassthru.h"
+#include "Audio/ProcessCaptureManager.h"
 #include <dbghelp.h>
 
 #pragma comment(lib, "dbghelp.lib")
@@ -59,11 +59,11 @@ public:
 
             FxController::getInstance().config(commandline);
 
-            audio_passthru_ = std::make_unique<AudioPassthru>();
+            capture_manager_ = std::make_unique<ProcessCaptureManager>();
             main_window_ = std::make_unique<FxMainWindow>();
             system_tray_view_.reset(new FxSystemTrayView());
 
-            FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get());
+            FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), capture_manager_.get());
         }
         catch (const std::exception& e)
         {
@@ -101,7 +101,7 @@ public:
         {
             // Add your application's shutdown code here..
 
-            audio_passthru_.reset();
+            capture_manager_.reset();
 
             system_tray_view_.reset();
 
@@ -312,7 +312,7 @@ private:
     std::unique_ptr<FxMainWindow> main_window_;
     
     std::unique_ptr<FxSystemTrayView> system_tray_view_;
-    std::unique_ptr<AudioPassthru> audio_passthru_;
+    std::unique_ptr<ProcessCaptureManager> capture_manager_;
 };
 
 //==============================================================================

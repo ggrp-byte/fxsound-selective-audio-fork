@@ -1,6 +1,6 @@
 /*
 FxSound
-Copyright (C) 2025  FxSound LLC
+Copyright (C) 2024  FxSound LLC
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -258,7 +258,7 @@ void WasapiLoopbackCapture::CaptureThreadImpl()
             if (m_captureCallback && numFramesAvailable > 0)
             {
                 UINT32 dataSize = numFramesAvailable * m_waveFormat->nBlockAlign;
-                m_captureCallback(this, pData, dataSize);
+                m_captureCallback(this, pData, dataSize, m_waveFormat);
             }
 
             hr = m_captureClient->ReleaseBuffer(numFramesAvailable);
